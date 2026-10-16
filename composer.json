@@ -1,0 +1,13 @@
+{
+  "require": {
+    "php": ">=8.5",
+    "ext-pdo": "*",
+    "ext-redis": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Framework\\": "framework/",
+      "App\\": "src/"
+    }
+  }
+}

@@ -1,47 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Framework\Config;
 
-class EnvLoader
+final class EnvLoader
 {
-    private string $projectRoot;
+    public function __construct(private readonly string $projectRoot) {}
 
-    public function __construct(string $projectRoot)
+    public function load(): void
     {
-        $this->projectRoot = rtrim($projectRoot, '/');
-    }
+        $filePath = rtrim($this->projectRoot, '/') . '/.env';
 
-    public function loadEnv(string $defaultEnv = 'dev'): void
-    {
-        $path = $this->projectRoot . '/.env';
-
-        $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? null;
-
-        if (null === $env) {
-            $this->load($path);
-            $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? $defaultEnv;
-        }
-
-        if ('test' !== $env && file_exists($p = $path . '.example')) {
-            $this->load($p);
-        }
-
-        if (file_exists($p = $path . '.' . $env)) {
-            $this->load($p);
-        }
-
-        if (file_exists($p = $path . '.' . $env . '.local')) {
-            $this->load($p);
-        }
-    }
-
-    public function load(string $filePath): void
-    {
         if (!file_exists($filePath)) {
             return;
         }
 
         $content = file_get_contents($filePath);
+        if ($content === false) {
+            throw new \RuntimeException("Cannot read .env file: $filePath");
+        }
+
         $lines = preg_split('/\r\n|\n|\r/', $content);
 
         foreach ($lines as $line) {
@@ -80,8 +59,12 @@ class EnvLoader
             return substr($value, 1, -1);
         }
 
-        if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
-            $value = substr($value, 1, -1);
+        if (str_starts_with($value, '"')) {
+            $end = strpos($value, '"', 1);
+            if ($end === false) {
+                throw new \RuntimeException("Unclosed quote in .env: $value");
+            }
+            $value = substr($value, 1, $end - 1);
             $value = str_replace(['\\n', '\\r', '\\t'], ["\n", "\r", "\t"], $value);
             return $this->resolveVariables($value);
         }
@@ -96,14 +79,24 @@ class EnvLoader
 
     private function resolveVariables(string $value): string
     {
-        return preg_replace_callback('/(?<!\\\\)\$(?:(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)|{(?P<name_braced>[a-zA-Z_][a-zA-Z0-9_]*)}做得)/', function ($matches) {
+        $pattern = '/(?<!\\\\)\$(?:(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)|{(?P<name_braced>[a-zA-Z_][a-zA-Z0-9_]*)})/';
+        return preg_replace_callback($pattern, function ($matches) {
             $name = !empty($matches['name']) ? $matches['name'] : ($matches['name_braced'] ?? '');
 
             if (!$name) {
                 return '';
             }
 
-            return $_ENV[$name] ?? $_SERVER[$name] ?? getenv($name) ?: '';
+            if (isset($_ENV[$name])) {
+                return $_ENV[$name];
+            }
+
+            if (isset($_SERVER[$name])) {
+                return $_SERVER[$name];
+            }
+
+            $envValue = getenv($name);
+            return $envValue !== false ? $envValue : '';
         }, $value);
     }
 }

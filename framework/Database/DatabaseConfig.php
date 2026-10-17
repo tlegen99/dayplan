@@ -27,10 +27,7 @@ final readonly class DatabaseConfig
         }
     }
 
-    /**
-     * @param array $env
-     * @return self
-     */
+    /** @param array<string, string> $env */
     public static function fromEnv(array $env): self
     {
         return new self(
@@ -42,11 +39,7 @@ final readonly class DatabaseConfig
         );
     }
 
-    /**
-     * @param array $env
-     * @param string $key
-     * @return string
-     */
+    /** @param array<string, string> $env */
     private static function required(array $env, string $key): string
     {
         $value = $env[$key] ?? '';
@@ -58,11 +51,7 @@ final readonly class DatabaseConfig
         return $value;
     }
 
-    /**
-     * @param array $env
-     * @param string $key
-     * @return int
-     */
+    /** @param array<string, string> $env */
     private static function requiredInt(array $env, string $key): int
     {
         $value = self::required($env, $key);

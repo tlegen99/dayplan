@@ -90,7 +90,12 @@ final readonly class ErrorHandler
             $response['error']['trace'] = explode("\n", $exception->getTraceAsString());
         }
 
-        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $flags = JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE;
+        if ($this->isDebug) {
+            $flags = $flags | JSON_PRETTY_PRINT;
+        }
+
+        echo json_encode($response, $flags);
     }
 
     public function handleShutdown(): void

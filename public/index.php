@@ -2,40 +2,12 @@
 
 declare(strict_types=1);
 
-use Framework\Config\EnvLoader;
-use Framework\Database\Connection;
-use Framework\Database\DatabaseConfig;
-use Framework\Health\HealthCheckRunner;
-use Framework\Health\PostgresHealthCheck;
-use Framework\Health\RedisHealthCheck;
-use Framework\Http\ErrorHandler;
-use Framework\Logger\FileLogger;
-use Framework\Redis\RedisConfig;
-use Framework\Redis\RedisConnection;
+use Framework\Core\Kernel;
 
-require_once dirname(__DIR__) . '/vendor/autoload.php';
+/** @var Kernel $kernel */
+$kernel = require dirname(__DIR__) . '/bootstrap/app.php';
 
-$envLoader = new EnvLoader(dirname(__DIR__));
-$envLoader->load();
-
-$env = getenv();
-
-$fileLogger = new FileLogger(dirname(__DIR__) . '/storage/logs/app.log');
-
-$errorHandler = new ErrorHandler($fileLogger, (bool)$env['APP_DEBUG']);
-$errorHandler->register();
-
-$dbConfig = DatabaseConfig::fromEnv($env);
-$redisConfig = RedisConfig::fromEnv($env);
-$dbConnection = new Connection($dbConfig);
-$redisConnection = new RedisConnection($redisConfig);
-
-$health = new HealthCheckRunner([
-    new PostgresHealthCheck($dbConnection),
-    new RedisHealthCheck($redisConnection),
-]);
-
-$results = $health->checkAll();
+$results = $kernel->health->checkAll();
 
 $allHealthy = true;
 $body = [];
@@ -45,7 +17,10 @@ foreach ($results as $result) {
         'status'      => $result->healthy ? 'ok' : 'fail',
         'duration_ms' => $result->durationMs,
     ];
-    // $result->error наружу НЕ отдаём, его будет писать в лог ErrorHandler
+
+    if (!$result->healthy) {
+        $kernel->logger->log("Health check {$result->name} failed: {$result->error}", 'warning');
+    }
 }
 
 http_response_code($allHealthy ? 200 : 503);

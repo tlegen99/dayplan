@@ -8,6 +8,8 @@ use Framework\Database\DatabaseConfig;
 use Framework\Health\HealthCheckRunner;
 use Framework\Health\PostgresHealthCheck;
 use Framework\Health\RedisHealthCheck;
+use Framework\Http\ErrorHandler;
+use Framework\Logger\FileLogger;
 use Framework\Redis\RedisConfig;
 use Framework\Redis\RedisConnection;
 
@@ -17,6 +19,12 @@ $envLoader = new EnvLoader(dirname(__DIR__));
 $envLoader->load();
 
 $env = getenv();
+
+$fileLogger = new FileLogger(dirname(__DIR__) . '/storage/logs/app.log');
+
+$errorHandler = new ErrorHandler($fileLogger, (bool)$env['APP_DEBUG']);
+$errorHandler->register();
+
 $dbConfig = DatabaseConfig::fromEnv($env);
 $redisConfig = RedisConfig::fromEnv($env);
 $dbConnection = new Connection($dbConfig);

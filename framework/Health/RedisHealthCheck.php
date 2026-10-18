@@ -6,7 +6,7 @@ namespace Framework\Health;
 
 use Framework\Redis\RedisConnection;
 
-final class RedisHealthCheck implements HealthCheck
+final class RedisHealthCheck implements HealthCheckInterface
 {
     public function __construct(
         private readonly RedisConnection $connection,

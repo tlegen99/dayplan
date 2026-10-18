@@ -6,7 +6,7 @@ namespace Framework\Health;
 
 use Framework\Database\Connection;
 
-final class PostgresHealthCheck implements HealthCheck
+final class PostgresHealthCheck implements HealthCheckInterface
 {
     public function __construct(
         private readonly Connection $connection,

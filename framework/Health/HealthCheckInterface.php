@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Health;
 
-interface HealthCheck
+interface HealthCheckInterface
 {
     public function name(): string;
 

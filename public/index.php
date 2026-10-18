@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Framework\Config\EnvLoader;
 use Framework\Database\Connection;
 use Framework\Database\DatabaseConfig;
-use Framework\Health\CompositeHealthCheck;
+use Framework\Health\HealthCheckRunner;
 use Framework\Health\PostgresHealthCheck;
 use Framework\Health\RedisHealthCheck;
 use Framework\Redis\RedisConfig;
@@ -22,7 +22,7 @@ $redisConfig = RedisConfig::fromEnv($env);
 $dbConnection = new Connection($dbConfig);
 $redisConnection = new RedisConnection($redisConfig);
 
-$health = new CompositeHealthCheck([
+$health = new HealthCheckRunner([
     new PostgresHealthCheck($dbConnection),
     new RedisHealthCheck($redisConnection),
 ]);

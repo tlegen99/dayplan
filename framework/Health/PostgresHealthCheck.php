@@ -12,21 +12,13 @@ final class PostgresHealthCheck implements HealthCheck
         private readonly Connection $connection,
     ) {}
 
-    public function check(): HealthResult
+    public function name(): string
     {
-        $start = hrtime(true);
-
-        try {
-            $this->connection->query('SELECT 1');
-
-            return HealthResult::healthy('postgres', $this->elapsedMs($start));
-        } catch (\Throwable $e) {
-            return HealthResult::unhealthy('postgres', $this->elapsedMs($start), $e->getMessage());
-        }
+        return 'postgres';
     }
 
-    private function elapsedMs(int $start): float
+    public function check(): void
     {
-        return round((hrtime(true) - $start) / 1_000_000, 2);
+        $this->connection->query('SELECT 1');
     }
 }

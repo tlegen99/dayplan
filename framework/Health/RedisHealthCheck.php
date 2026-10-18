@@ -12,23 +12,15 @@ final class RedisHealthCheck implements HealthCheck
         private readonly RedisConnection $connection,
     ) {}
 
-    public function check(): HealthResult
+    public function name(): string
     {
-        $start = hrtime(true);
-
-        try {
-            if (!$this->connection->ping()) {
-                return HealthResult::unhealthy('redis', $this->elapsedMs($start), 'PING returned false');
-            }
-
-            return HealthResult::healthy('redis', $this->elapsedMs($start));
-        } catch (\Throwable $e) {
-            return HealthResult::unhealthy('redis', $this->elapsedMs($start), $e->getMessage());
-        }
+        return 'redis';
     }
 
-    private function elapsedMs(int $start): float
+    public function check(): void
     {
-        return round((hrtime(true) - $start) / 1_000_000, 2);
+        if (!$this->connection->ping()) {
+            throw new \RuntimeException('PING returned false');
+        }
     }
 }

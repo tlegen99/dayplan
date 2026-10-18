@@ -6,5 +6,7 @@ namespace Framework\Health;
 
 interface HealthCheck
 {
-    public function check(): HealthResult;
+    public function name(): string;
+
+    public function check(): void;
 }

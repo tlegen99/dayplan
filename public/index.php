@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use Framework\Core\Kernel;
+use Framework\Http\Request;
 
 /** @var Kernel $kernel */
 $kernel = require dirname(__DIR__) . '/bootstrap/app.php';
 
 $results = $kernel->health->checkAll();
+
+$request = Request::fromGlobals();
 
 $allHealthy = true;
 $body = [];

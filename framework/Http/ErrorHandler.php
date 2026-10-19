@@ -39,6 +39,9 @@ final readonly class ErrorHandler
     {
         restore_error_handler();
 
+        $statusCode = $this->statusCodeFor($exception);
+        $level = $statusCode < 500 ? 'warning' : 'critical';
+
         $logMessage = sprintf(
             "%s в файле %s на строке %d. Стек вызовов: %s",
             $exception->getMessage(),
@@ -48,37 +51,53 @@ final readonly class ErrorHandler
         );
 
         try {
-            $this->logger->log($logMessage, 'critical');
+            $this->logger->log($logMessage, $level);
         } catch (\Throwable $logError) {
             error_log('Logger failed: ' . $logError->getMessage());
             error_log($logMessage);
         }
 
-        $this->sendJsonResponder($exception);
+        $this->sendJsonResponder($exception, $statusCode);
     }
 
-    private function sendJsonResponder(Throwable $exception): void
+    private function statusCodeFor(Throwable $exception): int
+    {
+        if ($exception instanceof HttpException) {
+            return $exception->statusCode();
+        }
+
+        $statusCode = 500;
+
+        if ($exception instanceof DatabaseUnavailableException
+            || $exception instanceof RedisUnavailableException
+        ) {
+            $statusCode = 503;
+        }
+
+        return $statusCode;
+    }
+
+    private function sendJsonResponder(Throwable $exception, int $statusCode): void
     {
         if (ob_get_length()) {
             ob_clean();
         }
 
-        $isUnavailable = $exception instanceof DatabaseUnavailableException
-            || $exception instanceof RedisUnavailableException;
-
-        $statusCode = $isUnavailable ? 503 : 500;
+        if ($statusCode < 500) {
+            $message = $exception->getMessage();
+        } else {
+            $message = $statusCode === 503 ? 'service unavailable' : 'internal error';
+        }
 
         if (!headers_sent()) {
             http_response_code($statusCode);
             header('Content-Type: application/json; charset=utf-8');
         }
 
-        $publicMessage = $statusCode === 503 ? 'service unavailable' : 'internal error';
-
         $response = [
             'success' => false,
             'error' => [
-                'message' => $publicMessage
+                'message' => $message
             ]
         ];
 

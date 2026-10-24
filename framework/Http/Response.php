@@ -28,6 +28,14 @@ readonly class Response
         $this->headers = $headers;
     }
 
+    public function withHeader(string $name, string $value): static
+    {
+        $headers = $this->headers;
+        $headers[strtolower($name)] = $value;
+
+        return clone($this, ['headers' => $headers]);
+    }
+
     public function sendHeaders(): static
     {
         if (headers_sent()) {

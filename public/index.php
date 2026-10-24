@@ -29,4 +29,5 @@ foreach ($results as $result) {
 }
 
 $jsonResponse = new JsonResponse($body, $allHealthy ? 200 : 503);
+$jsonResponse = $jsonResponse->withHeader('X-Request-Id', 'abc');
 $jsonResponse->send();

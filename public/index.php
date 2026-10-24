@@ -3,14 +3,16 @@
 declare(strict_types=1);
 
 use Framework\Core\Kernel;
+use Framework\Http\JsonResponse;
 use Framework\Http\Request;
+
 
 /** @var Kernel $kernel */
 $kernel = require dirname(__DIR__) . '/bootstrap/app.php';
 
-$results = $kernel->health->checkAll();
-
 $request = Request::fromGlobals();
+
+$results = $kernel->health->checkAll();
 
 $allHealthy = true;
 $body = [];
@@ -26,6 +28,5 @@ foreach ($results as $result) {
     }
 }
 
-http_response_code($allHealthy ? 200 : 503);
-header('Content-Type: application/json');
-echo json_encode($body, JSON_THROW_ON_ERROR);
+$jsonResponse = new JsonResponse($body, $allHealthy ? 200 : 503);
+$jsonResponse->send();

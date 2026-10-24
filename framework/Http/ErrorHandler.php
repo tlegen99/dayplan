@@ -57,7 +57,21 @@ final readonly class ErrorHandler
             error_log($logMessage);
         }
 
-        $this->sendJsonResponder($exception, $statusCode);
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
+        if (headers_sent()) {
+            return;
+        }
+
+        try {
+            $response = $this->createResponse($exception, $statusCode);
+        } catch (\Throwable) {
+            $response = new Response('{"success":false,"error":{"message":"internal error"}}', 500, ['content-type' => 'application/json']);
+        }
+
+        $response->send();
     }
 
     private function statusCodeFor(Throwable $exception): int
@@ -77,21 +91,12 @@ final readonly class ErrorHandler
         return $statusCode;
     }
 
-    private function sendJsonResponder(Throwable $exception, int $statusCode): void
+    private function createResponse(Throwable $exception, int $statusCode): JsonResponse
     {
-        if (ob_get_length()) {
-            ob_clean();
-        }
-
         if ($statusCode < 500) {
             $message = $exception->getMessage();
         } else {
             $message = $statusCode === 503 ? 'service unavailable' : 'internal error';
-        }
-
-        if (!headers_sent()) {
-            http_response_code($statusCode);
-            header('Content-Type: application/json; charset=utf-8');
         }
 
         $response = [
@@ -114,7 +119,7 @@ final readonly class ErrorHandler
             $flags = $flags | JSON_PRETTY_PRINT;
         }
 
-        echo json_encode($response, $flags);
+        return new JsonResponse($response, $statusCode, [], $flags);
     }
 
     public function handleShutdown(): void

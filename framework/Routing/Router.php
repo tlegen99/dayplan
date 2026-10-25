@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
+use Framework\Container\Container;
 use Framework\Http\HttpException;
 use Framework\Http\Request;
 use Framework\Http\Response;
@@ -12,24 +13,32 @@ final class Router
 {
     private array $routes = [];
 
-    public function get(string $path, callable $handler): void
+    public function __construct(private readonly Container $container) {}
+
+    public function get(string $path, callable|array $handler): void
     {
         $this->add('GET', $path, $handler);
     }
 
-    public function post(string $path, callable $handler): void
+    public function post(string $path, callable|array $handler): void
     {
         $this->add('POST', $path, $handler);
     }
 
-    private function add(string $method, string $path, callable $handler): void
+    private function add(string $method, string $path, callable|array $handler): void
     {
-        $this->routes[$path][$method] = $handler;
+        $this->routes[$this->normalizePath($path)][$method] = $handler;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $path = rtrim($path, '/');
+        return $path === '' ? '/' : $path;
     }
 
     public function dispatch(Request $request): Response
     {
-        $path = rtrim($request->path(), '/');
+        $path = $this->normalizePath($request->path());
         $method = $request->method();
 
         if (!isset($this->routes[$path])) {
@@ -41,6 +50,13 @@ final class Router
         }
 
         $handler = $this->routes[$path][$method];
+
+        if (is_array($handler) && is_string($handler[0])) {
+            [$class, $action] = $handler;
+
+            $controller = $this->container->get($class);
+            return $controller->$action($request);
+        }
 
         return $handler($request);
     }

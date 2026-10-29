@@ -13,7 +13,18 @@ final readonly class Request
         private string $path,
         private array  $query,
         private array  $body,
+        private array  $attributes = [],
     ) {}
+
+    public function withAttributes(array $attributes): static
+    {
+        return clone($this, ['attributes' => $attributes]);
+    }
+
+    public function attribute(string $key, mixed $default = null): mixed
+    {
+        return $this->attributes[$key] ?? $default;
+    }
 
     public static function fromGlobals(): self
     {

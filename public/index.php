@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Health\HealthController;
 use Framework\Core\Kernel;
 use Framework\Health\HealthCheckRunner;
+use Framework\Http\JsonResponse;
 use Framework\Http\Request;
+use Framework\Http\Response;
 use Framework\Logger\LoggerInterface;
 use Framework\Routing\Router;
 
@@ -23,6 +25,8 @@ $kernel->container->set(HealthController::class, fn ($c) => new HealthController
 ));
 
 $router->get('/health', [HealthController::class, 'index']);
+
+$router->get('/tasks/{id}', fn (Request $r): Response => new JsonResponse(['id' => $r->attribute('id')]));
 
 $response = $router->dispatch($request);
 $response->send();

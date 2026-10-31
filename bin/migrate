@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+// bin/migrate
+
+declare(strict_types=1);
+
+use Framework\Database\Migrator;
+
+$kernel = require dirname(__DIR__) . '/bootstrap/app.php';
+
+$migrator = $kernel->container->get(Migrator::class);
+
+$action = $argv[1] ?? 'migrate';
+
+if ($action === 'rollback') {
+    $steps = isset($argv[2]) ? (int)$argv[2] : 1;
+
+    if ($steps <= 0) {
+        echo "Ошибка: количество шагов должно быть больше 0\n";
+        exit(1);
+    }
+
+    echo "Rolling back $steps migration(s)...\n";
+    $rolledBack = $migrator->rollback($steps);
+
+    if ($rolledBack === []) {
+        echo "Nothing to rollback\n";
+    }
+
+    foreach ($rolledBack as $name) {
+        echo "Rolled back: $name\n";
+    }
+} else {
+    $applied = $migrator->migrate();
+    if ($applied === []) {
+        echo "Nothing to migrate\n";
+    }
+
+    foreach ($applied as $name) {
+        echo "Applied: $name\n";
+    }
+}

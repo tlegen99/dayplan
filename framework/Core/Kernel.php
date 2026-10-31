@@ -9,6 +9,7 @@ use Framework\Config\EnvLoader;
 use Framework\Container\Container;
 use Framework\Database\Connection;
 use Framework\Database\DatabaseConfig;
+use Framework\Database\Migrator;
 use Framework\Health\HealthCheckRunner;
 use Framework\Health\PostgresHealthCheck;
 use Framework\Health\RedisHealthCheck;
@@ -52,6 +53,11 @@ final class Kernel
 
         $this->container->set(HealthCheckRunner::class, fn ($c) => new HealthCheckRunner(
             [$c->get(PostgresHealthCheck::class), $c->get(RedisHealthCheck::class)],
+        ));
+
+        $this->container->set(Migrator::class, fn ($c) => new Migrator(
+            $c->get(Connection::class),
+            $this->projectDir . '/migrations',
         ));
     }
 }

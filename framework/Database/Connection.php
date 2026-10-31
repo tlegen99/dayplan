@@ -9,6 +9,7 @@ use PDO;
 final class Connection
 {
     private ?PDO $pdo = null;
+    private int $transactionNestingLevel = 0;
 
     public function __construct(
         private readonly DatabaseConfig $dbConfig
@@ -40,6 +41,53 @@ final class Connection
     public function disconnect(): void
     {
         $this->pdo = null;
+    }
+
+    public function executeRaw(string $sql): void
+    {
+        $this->pdo()->exec($sql);
+    }
+
+    /**
+     * @throws \Throwable
+     */
+    public function transactional(callable $fn): mixed
+    {
+        $this->transactionNestingLevel++;
+
+        if ($this->transactionNestingLevel === 1) {
+            $this->pdo()->beginTransaction();
+        } else {
+            $savepointName = 'LEVEL_' . $this->transactionNestingLevel;
+            $this->pdo()->exec("SAVEPOINT {$savepointName}");
+        }
+
+        try {
+            $result = $fn();
+
+            if ($this->transactionNestingLevel > 1) {
+                $savepointName = 'LEVEL_' . $this->transactionNestingLevel;
+                $this->pdo()->exec("RELEASE SAVEPOINT {$savepointName}");
+            } else {
+                $this->pdo()->commit();
+            }
+
+            $this->transactionNestingLevel--;
+            return $result;
+        } catch (\Throwable $e) {
+            if ($this->pdo()->inTransaction()) {
+                if ($this->transactionNestingLevel > 1) {
+                    $savepointName = 'LEVEL_' . $this->transactionNestingLevel;
+                    $this->pdo()->exec("ROLLBACK TO SAVEPOINT {$savepointName}");
+                } else {
+                    // откатываем всё если упало на 1 уровне
+                    $this->pdo()->rollBack();
+                }
+            }
+
+            $this->transactionNestingLevel--;
+            throw $e;
+        }
     }
 
     private function pdo(): PDO

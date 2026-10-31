@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Database;
 
-final class Migrator
+final readonly class Migrator
 {
     public function __construct(
         private Connection $connection,
@@ -13,13 +13,7 @@ final class Migrator
 
     public function migrate(): array
     {
-        $this->connection->executeRaw("CREATE TABLE IF NOT EXISTS migration_versions (
-            version VARCHAR(255) NOT NULL,
-            executed_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-            execution_time INT DEFAULT NULL,
-            PRIMARY KEY (version)
-        )");
-
+        $this->ensureVersionsTable();
         $appliedMigrations = $this->connection->query("SELECT version FROM migration_versions");
         $migrationsFiles = glob($this->migrationDir . '/*.php');
         $appliedMigrationsVersions = array_flip(array_column($appliedMigrations, 'version'));
@@ -33,10 +27,15 @@ final class Migrator
             }
 
             $migration = require $migrationFile;
+            $migrationUp = $migration['up'] ?? null;
+            if ($migrationUp === null) {
+                throw new \RuntimeException("Migration {$fileName} has no 'up' key");
+            }
+
             $start = hrtime(true);
 
-            $this->connection->transactional(function () use ($migration, $fileName, $start) {
-                $this->connection->executeRaw($migration['up']);
+            $this->connection->transactional(function () use ($migrationUp, $fileName, $start) {
+                $this->connection->executeRaw($migrationUp);
 
                 $executionTime = (int)round((hrtime(true) - $start) / 1_000_000);
                 $this->connection->execute(
@@ -51,10 +50,11 @@ final class Migrator
         return $newMigrations;
     }
 
-    public function rollback($steps): array
+    public function rollback(int $steps = 1): array
     {
+        $this->ensureVersionsTable();
         $appliedMigrations = $this->connection->query(
-            "SELECT version FROM migration_versions ORDER BY version DESC LIMIT :steps",
+            "SELECT version FROM migration_versions ORDER BY executed_at DESC, version DESC LIMIT :steps",
             ['steps' => $steps]
         );
 
@@ -64,13 +64,17 @@ final class Migrator
             $migrationFile = $this->migrationDir . '/' . $fileName . '.php';
 
             if (!file_exists($migrationFile)) {
-                throw new \Exception("Файл миграции для версии {$fileName} не найден!");
+                throw new \RuntimeException("Migration file for version {$fileName} not found!");
             }
 
             $migration = require $migrationFile;
+            $migrationDown = $migration['down'] ?? null;
+            if ($migrationDown === null) {
+                throw new \RuntimeException("Migration {$fileName} has no 'down' key");
+            }
 
-            $this->connection->transactional(function () use ($migration, $fileName) {
-                $this->connection->executeRaw($migration['down']);
+            $this->connection->transactional(function () use ($migrationDown, $fileName) {
+                $this->connection->executeRaw($migrationDown);
 
                 $this->connection->execute(
                     'DELETE FROM migration_versions WHERE version = :version',
@@ -82,5 +86,15 @@ final class Migrator
         }
 
         return $rolledBackMigrations;
+    }
+
+    private function ensureVersionsTable(): void
+    {
+        $this->connection->executeRaw("CREATE TABLE IF NOT EXISTS migration_versions (
+            version VARCHAR(255) NOT NULL,
+            executed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            execution_time INT DEFAULT NULL,
+            PRIMARY KEY (version)
+        )");
     }
 }

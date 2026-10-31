@@ -12,31 +12,40 @@ $migrator = $kernel->container->get(Migrator::class);
 
 $action = $argv[1] ?? 'migrate';
 
-if ($action === 'rollback') {
-    $steps = isset($argv[2]) ? (int)$argv[2] : 1;
+try {
+    if ($action === 'migrate') {
+        $applied = $migrator->migrate();
+        if ($applied === []) {
+            echo "Nothing to migrate\n";
+        }
 
-    if ($steps <= 0) {
-        echo "Ошибка: количество шагов должно быть больше 0\n";
-        exit(1);
-    }
+        foreach ($applied as $name) {
+            echo "Applied: $name\n";
+        }
+    } elseif ($action === 'rollback') {
+        $steps = isset($argv[2]) ? (int)$argv[2] : 1;
 
-    echo "Rolling back $steps migration(s)...\n";
-    $rolledBack = $migrator->rollback($steps);
+        if ($steps <= 0) {
+            echo "Ошибка: количество шагов должно быть больше 0\n";
+            exit(1);
+        }
 
-    if ($rolledBack === []) {
-        echo "Nothing to rollback\n";
-    }
+        echo "Rolling back $steps migration(s)...\n";
+        $rolledBack = $migrator->rollback($steps);
 
-    foreach ($rolledBack as $name) {
-        echo "Rolled back: $name\n";
-    }
-} else {
-    $applied = $migrator->migrate();
-    if ($applied === []) {
-        echo "Nothing to migrate\n";
-    }
+        if ($rolledBack === []) {
+            echo "Nothing to rollback\n";
+        }
 
-    foreach ($applied as $name) {
-        echo "Applied: $name\n";
+        foreach ($rolledBack as $name) {
+            echo "Rolled back: $name\n";
+        }
+    } else {
+        throw new \InvalidArgumentException("Unknown command: $action");
     }
+} catch (\RuntimeException | \InvalidArgumentException $e) {
+    echo "Error: {$e->getMessage()}\n";
+    exit(1);
 }
+
+

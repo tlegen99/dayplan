@@ -9,6 +9,7 @@ use App\Task\Exception\InvalidTitleException;
 use App\Task\Task;
 use App\Task\TaskStatus;
 use DateTimeImmutable;
+use LogicException;
 use PHPUnit\Framework\TestCase;
 
 final class TaskTest extends TestCase
@@ -134,5 +135,14 @@ final class TaskTest extends TestCase
 
         $task->moveTo(new DateTimeImmutable('2026-11-20 00:00:00'));
     }
-}
 
+    public function testCannotAssignIdTwice(): void
+    {
+        $task = new Task('Купить хлеб', new DateTimeImmutable('2026-11-20'));
+        $task->assignId(1);
+
+        $this->expectException(LogicException::class);
+
+        $task->assignId(2);
+    }
+}

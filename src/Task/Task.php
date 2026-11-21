@@ -7,6 +7,7 @@ namespace App\Task;
 use App\Task\Exception\InvalidStatusTransitionException;
 use App\Task\Exception\InvalidTitleException;
 use DateTimeImmutable;
+use LogicException;
 
 class Task
 {
@@ -86,5 +87,14 @@ class Task
     private function setTimeTrimming(DateTimeImmutable $at): void
     {
         $this->day = $at->setTime(0, 0);
+    }
+
+    public function assignId(int $id): void
+    {
+        if ($this->id !== null) {
+            throw new LogicException('Id уже назначен');
+        }
+
+        $this->id = $id;
     }
 }
